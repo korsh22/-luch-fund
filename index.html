@@ -611,7 +611,6 @@
     (data.months||[]).forEach(function(m){
       if(!m.scheme){
         if(/июл/i.test(m.name)) m.scheme = 'old_nofunds';
-        else if(/авг/i.test(m.name)) m.scheme = 'old';
         else m.scheme = 'new';
       }
     });
@@ -631,7 +630,7 @@
       boot({
         months: [
           { id: 'm1', name: 'Июль 2026', profit: 210000, scheme: 'old_nofunds' },
-          { id: 'm2', name: 'Август 2026', profit: 354000, scheme: 'old' },
+          { id: 'm2', name: 'Август 2026', profit: 354000, scheme: 'new' },
           { id: 'm3', name: 'Сентябрь 2026', profit: null, scheme: 'new' }
         ],
         planned: [

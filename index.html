@@ -132,7 +132,7 @@
   .card .rows b{ color: var(--text); font-weight: 600; }
 
   table{ width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-  table.wide-scroll-wrap{ display:block; overflow-x:auto; }
+  .wide-scroll-wrap{ overflow-x: auto; -webkit-overflow-scrolling: touch; }
   th, td{ padding: 10px 12px; text-align: right; font-size: 13.5px; border-bottom: 1px solid var(--border); white-space: nowrap; }
   th:first-child, td:first-child{ text-align: left; }
   thead th{ color: var(--text-muted); font-weight: 500; font-size: 12.5px; background: var(--surface-2); }
@@ -196,6 +196,58 @@
   @media (max-width: 640px){
     .hero{ flex-direction: column; align-items: flex-start; }
     .hero .breakdown{ gap: 16px; }
+
+    body{ padding: 20px 12px 70px; }
+    section h2{ font-size: 17px; }
+    .hint{ font-size: 12.5px; }
+
+    /* wide data tables become one card per row — no sideways scrolling */
+    .wide-scroll-wrap{ overflow-x: visible; }
+    .wide-scroll-wrap table{ border: none; background: transparent; }
+    .wide-scroll-wrap thead{
+      position: absolute; width: 1px; height: 1px; overflow: hidden;
+      clip: rect(0 0 0 0); white-space: nowrap;
+    }
+    .wide-scroll-wrap tbody, .wide-scroll-wrap tfoot{ display: block; }
+    .wide-scroll-wrap tr{
+      display: block;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 4px 12px;
+      margin-bottom: 10px;
+    }
+    .wide-scroll-wrap tfoot tr{ background: var(--surface-2); }
+    .wide-scroll-wrap td{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+      padding: 9px 0;
+      white-space: normal;
+      text-align: right;
+    }
+    .wide-scroll-wrap td:last-child{ border-bottom: none; }
+    .wide-scroll-wrap td::before{
+      content: attr(data-label);
+      color: var(--text-muted);
+      font-size: 11.5px;
+      flex: 0 0 auto;
+      text-align: left;
+    }
+    .wide-scroll-wrap td.name-cell{
+      display: block;
+      font-weight: 600;
+      font-size: 14.5px;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 0;
+      margin-bottom: 2px;
+    }
+    .wide-scroll-wrap td.name-cell::before{ content: none; }
+    .wide-scroll-wrap td.name-cell input[type="text"]{ text-align: left; width: 100%; }
+    .wide-scroll-wrap td input, .wide-scroll-wrap td select{ flex: 1 1 auto; min-width: 0; }
+    .wide-scroll-wrap td[data-label=""]{ justify-content: flex-end; }
   }
 </style>
 </head>
@@ -374,6 +426,7 @@
 
       var nameTd = document.createElement('td');
       nameTd.className = 'name-cell';
+      nameTd.setAttribute('data-label', 'Месяц');
       var nameInput = document.createElement('input');
       nameInput.type = 'text';
       nameInput.value = m.name;
@@ -382,6 +435,7 @@
       tr.appendChild(nameTd);
 
       var schemeTd = document.createElement('td');
+      schemeTd.setAttribute('data-label', 'Схема');
       var schemeSel = document.createElement('select');
       [['old_nofunds','Июль (без фондов, 10/90)'], ['old','Старая (5/45 + фонды)'], ['new','Новая (фонды)']].forEach(function(pair){
         var opt = document.createElement('option');
@@ -394,6 +448,7 @@
       tr.appendChild(schemeTd);
 
       var profitTd = document.createElement('td');
+      profitTd.setAttribute('data-label', 'Прибыль');
       var profitInput = document.createElement('input');
       profitInput.type = 'number';
       profitInput.placeholder = 'нет данных';
@@ -406,14 +461,17 @@
       profitTd.appendChild(profitInput);
       tr.appendChild(profitTd);
 
+      var colLabels = { sonya:'Соне 5%', maxim:'Максиму', denis:'Денису', base:'Остаток на фонды', holds:'Зацепы', rebuild:'Перестройка', other:'Прочее' };
       ['sonya','maxim','denis','base','holds','rebuild','other'].forEach(function(k){
         var td = document.createElement('td');
         td.className = 'muted-cell';
+        td.setAttribute('data-label', colLabels[k]);
         td.textContent = (c && c[k] !== null && c[k] !== undefined) ? fmt(c[k]) : '—';
         tr.appendChild(td);
       });
 
       var actTd = document.createElement('td');
+      actTd.setAttribute('data-label', '');
       var rm = document.createElement('button');
       rm.className = 'rowbtn'; rm.textContent = '✕'; rm.title = 'Удалить месяц';
       rm.addEventListener('click', function(){
@@ -431,8 +489,9 @@
     var foot = document.getElementById('months-foot');
     foot.innerHTML = "";
     var tr = document.createElement('tr');
+    var footLabels = ['Месяц','Схема','Прибыль','Соне 5%','Максиму','Денису','Остаток на фонды','Зацепы','Перестройка','Прочее',''];
     var cells = ['Итого (заполненные месяцы)', '', fmt(t.profit), fmt(t.sonya), fmt(t.maxim), fmt(t.denis), fmt(t.base), fmt(t.holds), fmt(t.rebuild), fmt(t.other), ''];
-    cells.forEach(function(txt){ var td = document.createElement('td'); td.textContent = txt; tr.appendChild(td); });
+    cells.forEach(function(txt, i){ var td = document.createElement('td'); td.setAttribute('data-label', footLabels[i]); td.textContent = txt; tr.appendChild(td); });
     foot.appendChild(tr);
 
     document.getElementById('months-status').textContent = t.monthsCounted + ' из ' + state.months.length + ' мес. с данными';
@@ -445,17 +504,17 @@
     state.planned.forEach(function(p, idx){
       var tr = document.createElement('tr');
 
-      var nameTd = document.createElement('td'); nameTd.className = 'name-cell';
+      var nameTd = document.createElement('td'); nameTd.className = 'name-cell'; nameTd.setAttribute('data-label','Статья');
       var nameInput = document.createElement('input'); nameInput.type = 'text'; nameInput.value = p.name;
       nameInput.addEventListener('change', function(){ p.name = nameInput.value; saveAndRender(); });
       nameTd.appendChild(nameInput); tr.appendChild(nameTd);
 
-      var amtTd = document.createElement('td');
+      var amtTd = document.createElement('td'); amtTd.setAttribute('data-label','Сумма');
       var amtInput = document.createElement('input'); amtInput.type = 'number'; amtInput.value = p.amount;
       amtInput.addEventListener('change', function(){ p.amount = Number(amtInput.value)||0; saveAndRender(); });
       amtTd.appendChild(amtInput); tr.appendChild(amtTd);
 
-      var fundTd = document.createElement('td');
+      var fundTd = document.createElement('td'); fundTd.setAttribute('data-label','Фонд');
       var sel = document.createElement('select');
       FUND_ORDER.forEach(function(fk){
         var opt = document.createElement('option');
@@ -466,7 +525,7 @@
       sel.addEventListener('change', function(){ p.fund = sel.value; saveAndRender(); });
       fundTd.appendChild(sel); tr.appendChild(fundTd);
 
-      var actTd = document.createElement('td');
+      var actTd = document.createElement('td'); actTd.setAttribute('data-label','');
       var rm = document.createElement('button'); rm.className='rowbtn'; rm.textContent='✕'; rm.title='Удалить статью';
       rm.addEventListener('click', function(){ state.planned.splice(idx,1); saveAndRender(); });
       actTd.appendChild(rm); tr.appendChild(actTd);

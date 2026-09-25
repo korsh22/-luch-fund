@@ -1,3 +1,4 @@
+<!-- build: 2026-09-25T07:24:17Z -->
 <!-- build: 2026-09-25T07:05Z -->
 <!doctype html>
 <html lang="ru">
@@ -393,11 +394,24 @@
       <label>Кол-во входов без membership<input type="number" id="be-eocount"></label>
       <label>Цена входа без membership, ₽<input type="number" id="be-eoprice"></label>
     </div>
+  </section>
+
+  <section>
+    <h2>Абонементы (месячные)</h2>
+    <div class="be-grid">
+      <label>Кол-во абонементов по membership<input type="number" id="be-swcount"></label>
+      <label>Цена абонемента с membership, ₽<input type="number" id="be-swprice"></label>
+      <label>Кол-во абонементов без membership<input type="number" id="be-socount"></label>
+      <label>Цена абонемента без membership, ₽<input type="number" id="be-soprice"></label>
+    </div>
     <p class="hint" id="be-revenue-line"></p>
   </section>
 
   <section>
     <h2>Постоянные расходы, ₽/мес</h2>
+    <div class="be-grid" style="max-width:260px; margin-bottom:14px;">
+      <label>Ставка налога, % от расходов<input type="number" id="be-taxrate" step="0.1"></label>
+    </div>
     <div class="wide-scroll-wrap">
     <table>
       <thead><tr><th>Статья</th><th>Сумма, ₽/мес</th><th></th></tr></thead>
@@ -481,16 +495,20 @@
       entriesWithPrice: 500,
       entriesWithoutCount: 100,
       entriesWithoutPrice: 1000,
+      subsWithCount: 0,
+      subsWithPrice: 0,
+      subsWithoutCount: 0,
+      subsWithoutPrice: 0,
+      taxRatePct: 10,
       fixedCosts: [
-        { id: 'fc1', name: 'Аренда', amount: 0 },
-        { id: 'fc2', name: 'ФОТ', amount: 0 },
-        { id: 'fc3', name: 'ФОТ руководители', amount: 0 },
-        { id: 'fc4', name: 'Налоги', amount: 0 },
-        { id: 'fc5', name: 'Реклама', amount: 0 },
-        { id: 'fc6', name: 'Содержание помещения', amount: 0 },
-        { id: 'fc7', name: 'Накрутка', amount: 0 },
-        { id: 'fc8', name: 'Парк зацепок', amount: 0 },
-        { id: 'fc9', name: 'Прочие расходы', amount: 0 }
+        { id: 'fc1', name: 'Аренда', amount: 380000 },
+        { id: 'fc2', name: 'ФОТ', amount: 160000 },
+        { id: 'fc3', name: 'ФОТ руководители', amount: 200000 },
+        { id: 'fc4', name: 'Реклама', amount: 15000 },
+        { id: 'fc5', name: 'Содержание помещения', amount: 100000 },
+        { id: 'fc6', name: 'Накрутка', amount: 400000 },
+        { id: 'fc7', name: 'Парк зацепок', amount: 50000 },
+        { id: 'fc8', name: 'Прочие расходы', amount: 0 }
       ]
     };
   }
@@ -770,12 +788,23 @@
     var ewPrice = Number(be.entriesWithPrice) || 0;
     var eoCount = Number(be.entriesWithoutCount) || 0;
     var eoPrice = Number(be.entriesWithoutPrice) || 0;
+    var swCount = Number(be.subsWithCount) || 0;
+    var swPrice = Number(be.subsWithPrice) || 0;
+    var soCount = Number(be.subsWithoutCount) || 0;
+    var soPrice = Number(be.subsWithoutPrice) || 0;
+    var taxRatePct = Number(be.taxRatePct) || 0;
 
-    var otherRevenue = ewCount*ewPrice + eoCount*eoPrice;   // revenue from entries, doesn't scale with membership scenarios
+    var entriesRevenue = ewCount*ewPrice + eoCount*eoPrice;
+    var subsRevenue = swCount*swPrice + soCount*soPrice;
+    var otherRevenue = entriesRevenue + subsRevenue;   // doesn't scale with membership scenarios
     var revenueMembership = mCount * mPrice;
     var totalRevenue = revenueMembership + otherRevenue;
     var membershipCostTotal = mCount * mCost;
-    var totalFixed = be.fixedCosts.reduce(function(s,c){ return s + (Number(c.amount)||0); }, 0);
+
+    var costsBeforeTax = be.fixedCosts.reduce(function(s,c){ return s + (Number(c.amount)||0); }, 0);
+    var taxAmount = costsBeforeTax * (taxRatePct/100);
+    var totalFixed = costsBeforeTax + taxAmount;
+
     var profitNow = totalRevenue - membershipCostTotal - totalFixed;
 
     var margin = mPrice - mCost;
@@ -794,10 +823,10 @@
 
     return {
       mCount: mCount, mPrice: mPrice, mCost: mCost, margin: margin,
-      ewCount: ewCount, ewPrice: ewPrice, eoCount: eoCount, eoPrice: eoPrice,
+      entriesRevenue: entriesRevenue, subsRevenue: subsRevenue,
       revenueMembership: revenueMembership, otherRevenue: otherRevenue, totalRevenue: totalRevenue,
-      membershipCostTotal: membershipCostTotal, totalFixed: totalFixed, profitNow: profitNow,
-      bepMembers: bepMembers, bepRevenue: bepRevenue, scenarios: scenarios
+      membershipCostTotal: membershipCostTotal, costsBeforeTax: costsBeforeTax, taxAmount: taxAmount, totalFixed: totalFixed,
+      profitNow: profitNow, bepMembers: bepMembers, bepRevenue: bepRevenue, scenarios: scenarios
     };
   }
 
@@ -811,10 +840,16 @@
     document.getElementById('be-ewprice').value = be.entriesWithPrice;
     document.getElementById('be-eocount').value = be.entriesWithoutCount;
     document.getElementById('be-eoprice').value = be.entriesWithoutPrice;
+    document.getElementById('be-swcount').value = be.subsWithCount;
+    document.getElementById('be-swprice').value = be.subsWithPrice;
+    document.getElementById('be-socount').value = be.subsWithoutCount;
+    document.getElementById('be-soprice').value = be.subsWithoutPrice;
+    document.getElementById('be-taxrate').value = be.taxRatePct;
 
     var calc = computeBreakeven();
     document.getElementById('be-revenue-line').textContent =
-      'Выручка сейчас: membership ' + fmt(calc.revenueMembership) + ' ₽ + входы ' + fmt(calc.otherRevenue) + ' ₽ = ' + fmt(calc.totalRevenue) + ' ₽/мес';
+      'Выручка сейчас: membership ' + fmt(calc.revenueMembership) + ' ₽ + входы ' + fmt(calc.entriesRevenue) +
+      ' ₽ + абонементы ' + fmt(calc.subsRevenue) + ' ₽ = ' + fmt(calc.totalRevenue) + ' ₽/мес';
   }
 
   function renderBreakevenCosts(){
@@ -845,6 +880,11 @@
     var calc = computeBreakeven();
     var foot = document.getElementById('be-costs-foot');
     foot.innerHTML = '';
+    var taxTr = document.createElement('tr');
+    ['Налоги (' + fmt(be.taxRatePct) + '% от расходов выше)', fmt(calc.taxAmount), ''].forEach(function(txt,i){
+      var td = document.createElement('td'); td.className = 'muted-cell'; td.setAttribute('data-label', i===0?'':(i===1?'Сумма, ₽/мес':'')); td.textContent = txt; taxTr.appendChild(td);
+    });
+    foot.appendChild(taxTr);
     var tr = document.createElement('tr');
     ['Итого постоянные расходы', fmt(calc.totalFixed), ''].forEach(function(txt,i){
       var td = document.createElement('td'); td.setAttribute('data-label', i===0?'':(i===1?'Сумма, ₽/мес':'')); td.textContent = txt; tr.appendChild(td);
@@ -1002,6 +1042,11 @@
   document.getElementById('be-ewprice').addEventListener('change', function(e){ state.breakeven.entriesWithPrice = Number(e.target.value)||0; saveAndRenderBE(); });
   document.getElementById('be-eocount').addEventListener('change', function(e){ state.breakeven.entriesWithoutCount = Number(e.target.value)||0; saveAndRenderBE(); });
   document.getElementById('be-eoprice').addEventListener('change', function(e){ state.breakeven.entriesWithoutPrice = Number(e.target.value)||0; saveAndRenderBE(); });
+  document.getElementById('be-swcount').addEventListener('change', function(e){ state.breakeven.subsWithCount = Number(e.target.value)||0; saveAndRenderBE(); });
+  document.getElementById('be-swprice').addEventListener('change', function(e){ state.breakeven.subsWithPrice = Number(e.target.value)||0; saveAndRenderBE(); });
+  document.getElementById('be-socount').addEventListener('change', function(e){ state.breakeven.subsWithoutCount = Number(e.target.value)||0; saveAndRenderBE(); });
+  document.getElementById('be-soprice').addEventListener('change', function(e){ state.breakeven.subsWithoutPrice = Number(e.target.value)||0; saveAndRenderBE(); });
+  document.getElementById('be-taxrate').addEventListener('change', function(e){ state.breakeven.taxRatePct = Number(e.target.value)||0; saveAndRenderBE(); });
   document.getElementById('be-add-cost').addEventListener('click', function(){
     state.breakeven.fixedCosts.push({ id: uid('fc'), name: 'Новая статья', amount: 0 });
     saveAndRenderBE();
@@ -1029,6 +1074,11 @@
       var oldName = data.breakeven && data.breakeven.name;
       data.breakeven = defaultBreakeven();
       if(oldName) data.breakeven.name = oldName;
+    } else {
+      var d = defaultBreakeven();
+      ['subsWithCount','subsWithPrice','subsWithoutCount','subsWithoutPrice','taxRatePct'].forEach(function(k){
+        if(data.breakeven[k] === undefined) data.breakeven[k] = d[k];
+      });
     }
     return data;
   }

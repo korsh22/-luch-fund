@@ -1,3 +1,4 @@
+<!-- build: 2026-09-25T07:05Z -->
 <!doctype html>
 <html lang="ru">
 <head>
@@ -193,6 +194,26 @@
   .status-bar.show{ opacity: 1; transform: translateY(0); }
   .status-bar.err{ color: var(--rose); border-color: var(--rose); }
 
+  .tabs{ display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  .tab-btn{
+    font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+    border: none; background: transparent; color: var(--text-muted);
+    padding: 10px 4px; margin-bottom: -1px; border-bottom: 2px solid transparent;
+  }
+  .tab-btn:hover{ color: var(--text); }
+  .tab-btn.active{ color: var(--teal); border-bottom-color: var(--teal); }
+  .tab-panel{ display: none; }
+  .tab-panel.active{ display: block; }
+
+  .be-grid{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 14px; margin-bottom: 12px; }
+  .be-grid label{ display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--text-muted); }
+  .be-grid input{
+    font: inherit; font-size: 14px; color: var(--text); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 8px; padding: 9px 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  .be-grid input:focus{ outline: none; border-color: var(--focus); }
+
   @media (max-width: 640px){
     .hero{ flex-direction: column; align-items: flex-start; }
     .hero .breakdown{ gap: 16px; }
@@ -253,6 +274,13 @@
 </head>
 <body>
 <div class="wrap">
+
+  <div class="tabs" id="tabs">
+    <button class="tab-btn active" data-tab="funds">Фонды</button>
+    <button class="tab-btn" data-tab="breakeven">Точка безубыточности</button>
+  </div>
+
+  <div class="tab-panel active" id="tab-funds">
 
   <header class="top">
     <div class="eyebrow">Скалодром «Луч» · внутренний учёт</div>
@@ -330,11 +358,105 @@
     </div>
   </section>
 
+  </div>
+
+  <div class="tab-panel" id="tab-breakeven">
+
+  <header class="top">
+    <div class="eyebrow">Скалодром «Луч» · новый проект</div>
+    <h1>Точка безубыточности</h1>
+    <p class="sub">Membership, разовые входы и постоянные расходы проекта — точка безубыточности по количеству membership считается сама.</p>
+  </header>
+
+  <section>
+    <h2>Проект</h2>
+    <div class="be-grid">
+      <label>Название проекта<input type="text" id="be-name"></label>
+    </div>
+  </section>
+
+  <section>
+    <h2>Membership</h2>
+    <div class="be-grid">
+      <label>Количество membership<input type="number" id="be-mcount"></label>
+      <label>Цена membership, ₽/мес<input type="number" id="be-mprice"></label>
+      <label>Затраты на 1 membership, ₽<input type="number" id="be-mcost"></label>
+    </div>
+    <p class="hint">Затраты на membership = количество × затраты на 1 membership.</p>
+  </section>
+
+  <section>
+    <h2>Разовые входы</h2>
+    <div class="be-grid">
+      <label>Кол-во входов по membership<input type="number" id="be-ewcount"></label>
+      <label>Цена входа с membership, ₽<input type="number" id="be-ewprice"></label>
+      <label>Кол-во входов без membership<input type="number" id="be-eocount"></label>
+      <label>Цена входа без membership, ₽<input type="number" id="be-eoprice"></label>
+    </div>
+    <p class="hint" id="be-revenue-line"></p>
+  </section>
+
+  <section>
+    <h2>Постоянные расходы, ₽/мес</h2>
+    <div class="wide-scroll-wrap">
+    <table>
+      <thead><tr><th>Статья</th><th>Сумма, ₽/мес</th><th></th></tr></thead>
+      <tbody id="be-costs-body"></tbody>
+      <tfoot id="be-costs-foot"></tfoot>
+    </table>
+    </div>
+    <div class="table-actions">
+      <button class="btn ghost" id="be-add-cost">+ добавить статью</button>
+    </div>
+  </section>
+
+  <div class="hero">
+    <div>
+      <div class="num" id="be-hero-units">—</div>
+      <div class="num-label">membership — точка безубыточности</div>
+    </div>
+    <div class="breakdown">
+      <div class="bd-item">
+        <div class="v" id="be-hero-revenue">—</div>
+        <div class="l">₽/мес — итого выручка в точке</div>
+      </div>
+      <div class="bd-item">
+        <div class="v" id="be-hero-profit">—</div>
+        <div class="l">₽/мес — прибыль сейчас (при введённых цифрах)</div>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <h2>Сценарии по количеству membership</h2>
+    <p class="hint">% от точки безубыточности по membership. Входы (с/без membership) считаются как введено выше, не масштабируются. Зелёным — прибыльные объёмы, красным — убыточные.</p>
+    <div class="wide-scroll-wrap">
+    <table>
+      <thead><tr><th>Сценарий</th><th>Membership</th><th>Выручка</th><th>Затраты на membership</th><th>Постоянные</th><th>Итого затраты</th><th>Прибыль/убыток</th></tr></thead>
+      <tbody id="be-scenarios-body"></tbody>
+    </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Выручка и затраты по объёму</h2>
+    <div class="chart-card">
+      <div id="be-chart-holder"></div>
+      <div class="legend">
+        <span><i style="background:var(--teal)"></i>выручка</span>
+        <span><i style="background:var(--rose)"></i>итого затраты</span>
+      </div>
+    </div>
+  </section>
+
+  </div>
+
 </div>
 
 <div class="status-bar" id="status-bar">Сохранено</div>
 
 <script>
+
 (function(){
   "use strict";
 
@@ -345,9 +467,33 @@
   };
   var FUND_ORDER = ["holds","rebuild","other"];
 
-  var state = { months: [], planned: [] };
+  var state = { months: [], planned: [], breakeven: null };
   var uidCounter = 1;
   function uid(prefix){ return prefix + (uidCounter++) + "_" + Date.now().toString(36); }
+
+  function defaultBreakeven(){
+    return {
+      name: 'Новый проект (клуб)',
+      membershipCount: 100,
+      membershipPrice: 5000,
+      membershipCost: 500,
+      entriesWithCount: 200,
+      entriesWithPrice: 500,
+      entriesWithoutCount: 100,
+      entriesWithoutPrice: 1000,
+      fixedCosts: [
+        { id: 'fc1', name: 'Аренда', amount: 0 },
+        { id: 'fc2', name: 'ФОТ', amount: 0 },
+        { id: 'fc3', name: 'ФОТ руководители', amount: 0 },
+        { id: 'fc4', name: 'Налоги', amount: 0 },
+        { id: 'fc5', name: 'Реклама', amount: 0 },
+        { id: 'fc6', name: 'Содержание помещения', amount: 0 },
+        { id: 'fc7', name: 'Накрутка', amount: 0 },
+        { id: 'fc8', name: 'Парк зацепок', amount: 0 },
+        { id: 'fc9', name: 'Прочие расходы', amount: 0 }
+      ]
+    };
+  }
 
   function fmt(n){
     if(n === null || n === undefined || isNaN(n)) return "—";
@@ -603,11 +749,194 @@
     holder.innerHTML = svg;
   }
 
+  // ---------- breakeven tab ----------
+  var BE_SCENARIOS = [
+    ['0% (простой)', 0],
+    ['50% от точки', 0.5],
+    ['75% от точки', 0.75],
+    ['100% — точка безубыточности', 1],
+    ['125% от точки', 1.25],
+    ['150% от точки', 1.5],
+    ['200% от точки', 2]
+  ];
+
+  function computeBreakeven(){
+    var be = state.breakeven;
+    if(!be) return null;
+    var mCount = Number(be.membershipCount) || 0;
+    var mPrice = Number(be.membershipPrice) || 0;
+    var mCost  = Number(be.membershipCost) || 0;
+    var ewCount = Number(be.entriesWithCount) || 0;
+    var ewPrice = Number(be.entriesWithPrice) || 0;
+    var eoCount = Number(be.entriesWithoutCount) || 0;
+    var eoPrice = Number(be.entriesWithoutPrice) || 0;
+
+    var otherRevenue = ewCount*ewPrice + eoCount*eoPrice;   // revenue from entries, doesn't scale with membership scenarios
+    var revenueMembership = mCount * mPrice;
+    var totalRevenue = revenueMembership + otherRevenue;
+    var membershipCostTotal = mCount * mCost;
+    var totalFixed = be.fixedCosts.reduce(function(s,c){ return s + (Number(c.amount)||0); }, 0);
+    var profitNow = totalRevenue - membershipCostTotal - totalFixed;
+
+    var margin = mPrice - mCost;
+    var bepMembers = margin > 0 ? (totalFixed - otherRevenue) / margin : null;
+    var bepRevenue = bepMembers !== null ? bepMembers*mPrice + otherRevenue : null;
+
+    var scenarios = BE_SCENARIOS.map(function(pair){
+      if(bepMembers === null) return { label: pair[0], volume: null, revenue: null, varCost: null, fixedCost: totalFixed, totalCost: null, profit: null };
+      var volume = Math.max(0, bepMembers) * pair[1];
+      var revenue = volume*mPrice + otherRevenue;
+      var varCost = volume*mCost;
+      var totalCost = varCost + totalFixed;
+      var profit = revenue - totalCost;
+      return { label: pair[0], volume: volume, revenue: revenue, varCost: varCost, fixedCost: totalFixed, totalCost: totalCost, profit: profit };
+    });
+
+    return {
+      mCount: mCount, mPrice: mPrice, mCost: mCost, margin: margin,
+      ewCount: ewCount, ewPrice: ewPrice, eoCount: eoCount, eoPrice: eoPrice,
+      revenueMembership: revenueMembership, otherRevenue: otherRevenue, totalRevenue: totalRevenue,
+      membershipCostTotal: membershipCostTotal, totalFixed: totalFixed, profitNow: profitNow,
+      bepMembers: bepMembers, bepRevenue: bepRevenue, scenarios: scenarios
+    };
+  }
+
+  function renderBreakevenInputs(){
+    var be = state.breakeven;
+    document.getElementById('be-name').value = be.name;
+    document.getElementById('be-mcount').value = be.membershipCount;
+    document.getElementById('be-mprice').value = be.membershipPrice;
+    document.getElementById('be-mcost').value = be.membershipCost;
+    document.getElementById('be-ewcount').value = be.entriesWithCount;
+    document.getElementById('be-ewprice').value = be.entriesWithPrice;
+    document.getElementById('be-eocount').value = be.entriesWithoutCount;
+    document.getElementById('be-eoprice').value = be.entriesWithoutPrice;
+
+    var calc = computeBreakeven();
+    document.getElementById('be-revenue-line').textContent =
+      'Выручка сейчас: membership ' + fmt(calc.revenueMembership) + ' ₽ + входы ' + fmt(calc.otherRevenue) + ' ₽ = ' + fmt(calc.totalRevenue) + ' ₽/мес';
+  }
+
+  function renderBreakevenCosts(){
+    var be = state.breakeven;
+    var body = document.getElementById('be-costs-body');
+    body.innerHTML = '';
+    be.fixedCosts.forEach(function(c, idx){
+      var tr = document.createElement('tr');
+
+      var nameTd = document.createElement('td'); nameTd.className = 'name-cell'; nameTd.setAttribute('data-label','Статья');
+      var nameInput = document.createElement('input'); nameInput.type = 'text'; nameInput.value = c.name;
+      nameInput.addEventListener('change', function(){ c.name = nameInput.value; saveAndRenderBE(); });
+      nameTd.appendChild(nameInput); tr.appendChild(nameTd);
+
+      var amtTd = document.createElement('td'); amtTd.setAttribute('data-label','Сумма, ₽/мес');
+      var amtInput = document.createElement('input'); amtInput.type = 'number'; amtInput.value = c.amount;
+      amtInput.addEventListener('change', function(){ c.amount = Number(amtInput.value)||0; saveAndRenderBE(); });
+      amtTd.appendChild(amtInput); tr.appendChild(amtTd);
+
+      var actTd = document.createElement('td'); actTd.setAttribute('data-label','');
+      var rm = document.createElement('button'); rm.className='rowbtn'; rm.textContent='✕'; rm.title='Удалить статью';
+      rm.addEventListener('click', function(){ be.fixedCosts.splice(idx,1); saveAndRenderBE(); });
+      actTd.appendChild(rm); tr.appendChild(actTd);
+
+      body.appendChild(tr);
+    });
+
+    var calc = computeBreakeven();
+    var foot = document.getElementById('be-costs-foot');
+    foot.innerHTML = '';
+    var tr = document.createElement('tr');
+    ['Итого постоянные расходы', fmt(calc.totalFixed), ''].forEach(function(txt,i){
+      var td = document.createElement('td'); td.setAttribute('data-label', i===0?'':(i===1?'Сумма, ₽/мес':'')); td.textContent = txt; tr.appendChild(td);
+    });
+    foot.appendChild(tr);
+  }
+
+  function renderBreakevenResults(){
+    var calc = computeBreakeven();
+    document.getElementById('be-hero-units').textContent = calc.bepMembers !== null ? fmt(Math.max(0,calc.bepMembers)) : '—';
+    document.getElementById('be-hero-revenue').textContent = calc.bepRevenue !== null ? fmt(calc.bepRevenue) : '—';
+    var profitEl = document.getElementById('be-hero-profit');
+    profitEl.textContent = fmt(calc.profitNow);
+    profitEl.style.color = calc.profitNow >= 0 ? 'var(--teal)' : 'var(--rose)';
+
+    if(calc.margin <= 0){
+      document.getElementById('be-hero-units').textContent = '—';
+      document.getElementById('be-hero-revenue').textContent = '—';
+    } else if(calc.bepMembers < 0){
+      document.getElementById('be-hero-units').textContent = '0';
+    }
+
+    var body = document.getElementById('be-scenarios-body');
+    body.innerHTML = '';
+    calc.scenarios.forEach(function(s){
+      var tr = document.createElement('tr');
+      if(s.profit !== null){
+        tr.style.background = s.profit >= 0 ? 'var(--teal-soft)' : 'var(--rose-soft)';
+      }
+      var vals = [s.label, s.volume, s.revenue, s.varCost, s.fixedCost, s.totalCost, s.profit];
+      vals.forEach(function(v, i){
+        var td = document.createElement('td');
+        if(i > 0) td.style.fontVariantNumeric = 'tabular-nums';
+        td.textContent = (i === 0) ? v : (v === null ? '—' : fmt(v));
+        if(i === vals.length-1 && v !== null) td.style.fontWeight = '700';
+        tr.appendChild(td);
+      });
+      body.appendChild(tr);
+    });
+  }
+
+  function renderBreakevenChart(){
+    var calc = computeBreakeven();
+    var holder = document.getElementById('be-chart-holder');
+    if(calc.bepMembers === null){
+      holder.innerHTML = '<p class="hint" style="margin:0;">Цена membership должна быть больше затрат на 1 membership, чтобы построить график.</p>';
+      return;
+    }
+    var pts = calc.scenarios;
+    var W = 640, H = 240, padL = 60, padR = 20, padT = 16, padB = 30;
+    var maxVal = 1;
+    pts.forEach(function(s){ maxVal = Math.max(maxVal, s.revenue||0, s.totalCost||0); });
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+    function x(i){ return padL + (i/(pts.length-1)) * plotW; }
+    function y(v){ return padT + plotH - (v/maxVal) * plotH; }
+
+    function line(key, color){
+      var d = pts.map(function(s,i){ return (i===0?'M':'L') + x(i).toFixed(1) + ' ' + y(s[key]||0).toFixed(1); }).join(' ');
+      var dots = pts.map(function(s,i){ return '<circle cx="'+x(i).toFixed(1)+'" cy="'+y(s[key]||0).toFixed(1)+'" r="3" fill="'+color+'"></circle>'; }).join('');
+      return '<path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="2.5"></path>' + dots;
+    }
+
+    var svg = '<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:'+W+'px" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Выручка и затраты по объёму">';
+    svg += '<line x1="'+padL+'" y1="'+(padT+plotH)+'" x2="'+(padL+plotW)+'" y2="'+(padT+plotH)+'" stroke="var(--border)"></line>';
+    svg += line('totalCost', '#AD4A3A');
+    svg += line('revenue', '#1F6F5C');
+    pts.forEach(function(s,i){
+      svg += '<text x="'+x(i).toFixed(1)+'" y="'+(H-8)+'" font-size="9.5" text-anchor="middle" fill="var(--text-muted)" font-family="Inter, sans-serif">'+Math.round((BE_SCENARIOS[i][1])*100)+'%</text>';
+    });
+    svg += '</svg>';
+    holder.innerHTML = svg;
+  }
+
+  function renderBreakevenAll(){
+    if(!state.breakeven) state.breakeven = defaultBreakeven();
+    renderBreakevenInputs();
+    renderBreakevenCosts();
+    renderBreakevenResults();
+    renderBreakevenChart();
+  }
+
+  function saveAndRenderBE(){
+    renderBreakevenAll();
+    persist();
+  }
+
   function renderAll(){
     renderMonths();
     renderPlanned();
     renderHeroAndCards();
     renderChart();
+    renderBreakevenAll();
   }
 
   // ---------- persistence ----------
@@ -665,6 +994,29 @@
     saveAndRender();
   });
 
+  document.getElementById('be-name').addEventListener('change', function(e){ state.breakeven.name = e.target.value; saveAndRenderBE(); });
+  document.getElementById('be-mcount').addEventListener('change', function(e){ state.breakeven.membershipCount = Number(e.target.value)||0; saveAndRenderBE(); });
+  document.getElementById('be-mprice').addEventListener('change', function(e){ state.breakeven.membershipPrice = Number(e.target.value)||0; saveAndRenderBE(); });
+  document.getElementById('be-mcost').addEventListener('change', function(e){ state.breakeven.membershipCost = Number(e.target.value)||0; saveAndRenderBE(); });
+  document.getElementById('be-ewcount').addEventListener('change', function(e){ state.breakeven.entriesWithCount = Number(e.target.value)||0; saveAndRenderBE(); });
+  document.getElementById('be-ewprice').addEventListener('change', function(e){ state.breakeven.entriesWithPrice = Number(e.target.value)||0; saveAndRenderBE(); });
+  document.getElementById('be-eocount').addEventListener('change', function(e){ state.breakeven.entriesWithoutCount = Number(e.target.value)||0; saveAndRenderBE(); });
+  document.getElementById('be-eoprice').addEventListener('change', function(e){ state.breakeven.entriesWithoutPrice = Number(e.target.value)||0; saveAndRenderBE(); });
+  document.getElementById('be-add-cost').addEventListener('click', function(){
+    state.breakeven.fixedCosts.push({ id: uid('fc'), name: 'Новая статья', amount: 0 });
+    saveAndRenderBE();
+  });
+
+  // ---------- tabs ----------
+  document.getElementById('tabs').addEventListener('click', function(e){
+    var btn = e.target.closest('.tab-btn');
+    if(!btn) return;
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.toggle('active', b === btn); });
+    var tab = btn.getAttribute('data-tab');
+    document.getElementById('tab-funds').classList.toggle('active', tab === 'funds');
+    document.getElementById('tab-breakeven').classList.toggle('active', tab === 'breakeven');
+  });
+
   // ---------- boot ----------
   function migrate(data){
     (data.months||[]).forEach(function(m){
@@ -673,6 +1025,11 @@
         else m.scheme = 'new';
       }
     });
+    if(!data.breakeven || data.breakeven.membershipCount === undefined){
+      var oldName = data.breakeven && data.breakeven.name;
+      data.breakeven = defaultBreakeven();
+      if(oldName) data.breakeven.name = oldName;
+    }
     return data;
   }
 
@@ -696,7 +1053,8 @@
           { id: 'p1', name: 'Детские зацепы', amount: 42228, fund: 'holds' },
           { id: 'p2', name: 'Биты, саморезы, шуруповёрт', amount: 25400, fund: 'other' },
           { id: 'p3', name: 'Возврат Коле за шуруповёрт', amount: 13000, fund: 'other' }
-        ]
+        ],
+        breakeven: defaultBreakeven()
       });
     });
 

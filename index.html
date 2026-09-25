@@ -1,4 +1,4 @@
-<!-- build: 2026-09-25T11:27:16Z -->
+<!-- build: 2026-09-25T11:42:10Z -->
 <!-- build: 2026-09-25T08:23:13Z -->
 <!-- build: 2026-09-25T07:29:55Z -->
 <!-- build: 2026-09-25T07:24:17Z -->
@@ -435,15 +435,19 @@
     <div class="breakdown">
       <div class="bd-item">
         <div class="v" id="be-hero-revenue">—</div>
-        <div class="l">₽/мес — итого выручка в точке</div>
-      </div>
-      <div class="bd-item">
-        <div class="v" id="be-hero-profit">—</div>
-        <div class="l">₽/мес — прибыль сейчас, после налога</div>
+        <div class="l">₽/мес — выручка в точке безубыточности (до налога)</div>
       </div>
       <div class="bd-item">
         <div class="v" id="be-hero-tax">—</div>
-        <div class="l">₽/мес — налог с прибыли</div>
+        <div class="l">₽/мес — налог сейчас (10% от выручки)</div>
+      </div>
+      <div class="bd-item">
+        <div class="v" id="be-hero-net-revenue">—</div>
+        <div class="l">₽/мес — выручка сейчас за вычетом налога</div>
+      </div>
+      <div class="bd-item">
+        <div class="v" id="be-hero-profit">—</div>
+        <div class="l">₽/мес — итоговая прибыль сейчас</div>
       </div>
     </div>
   </div>
@@ -867,7 +871,7 @@
       'Выручка сейчас: членские взносы ' + fmt(calc.revenueMembership) +
       ' ₽ + входы ' + fmt(calc.entriesWithRevenue + (Number(be.entriesWithoutCount)||0)*(Number(be.entriesWithoutPrice)||0)) +
       ' ₽ + абонементы ' + fmt(calc.subsWithRevenue + (Number(be.subsWithoutCount)||0)*(Number(be.subsWithoutPrice)||0)) +
-      ' ₽ = ' + fmt(calc.totalRevenue) + ' ₽/мес';
+      ' ₽ = ' + fmt(calc.totalRevenue) + ' ₽/мес · минус налог ' + fmt(be.taxRatePct) + '% (' + fmt(calc.taxAmount) + ' ₽) = ' + fmt(calc.totalRevenue - calc.taxAmount) + ' ₽/мес после налога';
   }
 
   function renderBreakevenCosts(){
@@ -913,6 +917,7 @@
     profitEl.textContent = fmt(calc.profitNow);
     profitEl.style.color = calc.profitNow >= 0 ? 'var(--teal)' : 'var(--rose)';
     document.getElementById('be-hero-tax').textContent = fmt(calc.taxAmount);
+    document.getElementById('be-hero-net-revenue').textContent = fmt(calc.totalRevenue - calc.taxAmount);
 
     if(calc.margin <= 0){
       document.getElementById('be-hero-units').textContent = '—';

@@ -1,8 +1,3 @@
-<!-- build: 2026-09-25T11:42:10Z -->
-<!-- build: 2026-09-25T08:23:13Z -->
-<!-- build: 2026-09-25T07:29:55Z -->
-<!-- build: 2026-09-25T07:24:17Z -->
-<!-- build: 2026-09-25T07:05Z -->
 <!doctype html>
 <html lang="ru">
 <head>
@@ -391,8 +386,10 @@
 
   <section>
     <h2>Разовые входы</h2>
+    <p class="hint">Участники — доля от всех membership: не все ходят по разовым, и их выручка растёт вместе с числом карт. «Без membership» — гости, фиксированное число.</p>
     <div class="be-grid">
-      <label>Кол-во входов по membership<input type="number" id="be-ewcount"></label>
+      <label>% участников, ходящих по разовым<input type="number" id="be-ewpct" step="1" min="0" max="100"></label>
+      <label>Входов в месяц на такого участника<input type="number" id="be-ewvisits" step="0.5" min="0"></label>
       <label>Цена входа с membership, ₽<input type="number" id="be-ewprice"></label>
       <label>Кол-во входов без membership<input type="number" id="be-eocount"></label>
       <label>Цена входа без membership, ₽<input type="number" id="be-eoprice"></label>
@@ -402,7 +399,7 @@
   <section>
     <h2>Абонементы (месячные)</h2>
     <div class="be-grid">
-      <label>Кол-во абонементов по membership<input type="number" id="be-swcount"></label>
+      <label>% участников с месячным абонементом<input type="number" id="be-swpct" step="1" min="0" max="100"></label>
       <label>Цена абонемента с membership, ₽<input type="number" id="be-swprice"></label>
       <label>Кол-во абонементов без membership<input type="number" id="be-socount"></label>
       <label>Цена абонемента без membership, ₽<input type="number" id="be-soprice"></label>
@@ -411,7 +408,7 @@
   </section>
 
   <section>
-    <h2>Постоянные расходы, ₽/мес</h2>
+    <h2>Расходы, ₽/мес</h2>
     <div class="be-grid" style="max-width:260px; margin-bottom:14px;">
       <label>Ставка налога, % от выручки<input type="number" id="be-taxrate" step="0.1"></label>
     </div>
@@ -430,12 +427,12 @@
   <div class="hero">
     <div>
       <div class="num" id="be-hero-units">—</div>
-      <div class="num-label">membership — точка безубыточности</div>
+      <div class="num-label" id="be-hero-units-label">₽/мес — выручка в точке безубыточности (до налога)</div>
     </div>
     <div class="breakdown">
       <div class="bd-item">
         <div class="v" id="be-hero-revenue">—</div>
-        <div class="l">₽/мес — выручка в точке безубыточности (до налога)</div>
+        <div class="l">участников в точке при текущих долях (справочно)</div>
       </div>
       <div class="bd-item">
         <div class="v" id="be-hero-tax">—</div>
@@ -454,7 +451,7 @@
 
   <section>
     <h2>Сценарии по количеству membership</h2>
-    <p class="hint">% от точки безубыточности по membership. Входы (с/без membership) считаются как введено выше, не масштабируются. Налог — % от выручки, поэтому он есть и в самой точке безубыточности. Зелёным — прибыльные объёмы, красным — убыточные.</p>
+    <p class="hint">% от точки безубыточности. Выручка участников (взносы, входы, абонементы) растёт вместе с числом membership при заданных долях; гости — фиксированная величина. Налог — % от выручки, поэтому он есть и в самой точке безубыточности. Зелёным — прибыльные объёмы, красным — убыточные.</p>
     <div class="wide-scroll-wrap">
     <table>
       <thead><tr><th>Сценарий</th><th>Membership</th><th>Выручка</th><th>Затраты на membership</th><th>Постоянные</th><th>Налог</th><th>Итого затраты</th><th>Прибыль/убыток</th></tr></thead>
@@ -499,19 +496,20 @@
   function defaultBreakeven(){
     return {
       name: 'Новый проект (клуб)',
-      membershipCount: 100,
-      membershipPrice: 60000,
-      membershipCost: 6000,
-      entriesWithCount: 200,
-      entriesWithPrice: 500,
-      entriesWithoutCount: 100,
-      entriesWithoutPrice: 1000,
-      subsWithCount: 0,
-      subsWithPrice: 0,
-      subsWithoutCount: 0,
+      membershipCount: 200,
+      membershipPrice: 12000,
+      membershipCost: 4000,
+      entriesWithPct: 40,        // % of members who come on single entries
+      entriesWithVisits: 4,      // entries per month for such a member
+      entriesWithPrice: 800,
+      entriesWithoutCount: 50,   // guests, fixed number
+      entriesWithoutPrice: 1400,
+      subsWithPct: 60,           // % of members holding a monthly pass
+      subsWithPrice: 5800,
+      subsWithoutCount: 0,       // non-members, fixed number
       subsWithoutPrice: 0,
       taxRatePct: 10,
-      beVersion: 3,
+      beVersion: 4,
       fixedCosts: [
         { id: 'fc1', name: 'Аренда', amount: 380000 },
         { id: 'fc2', name: 'ФОТ', amount: 160000 },
@@ -798,41 +796,48 @@
     var mCostYear  = Number(be.membershipCost) || 0;
     var mPrice = mPriceYear / 12;   // membership is paid once a year — convert to a monthly equivalent
     var mCost  = mCostYear / 12;    // same for the cost tied to servicing one membership
-    var ewCount = Number(be.entriesWithCount) || 0;     // not every member enters or buys a sub — kept as an independent count
+    var ewPct = Number(be.entriesWithPct) || 0;              // % of members on single entries
+    var ewVisits = Number(be.entriesWithVisits) || 0;        // entries per month for such a member
     var ewPrice = Number(be.entriesWithPrice) || 0;
-    var eoCount = Number(be.entriesWithoutCount) || 0;
+    var eoCount = Number(be.entriesWithoutCount) || 0;       // guests — fixed
     var eoPrice = Number(be.entriesWithoutPrice) || 0;
-    var swCount = Number(be.subsWithCount) || 0;
+    var swPct = Number(be.subsWithPct) || 0;                 // % of members with a monthly pass
     var swPrice = Number(be.subsWithPrice) || 0;
-    var soCount = Number(be.subsWithoutCount) || 0;
+    var soCount = Number(be.subsWithoutCount) || 0;          // non-members — fixed
     var soPrice = Number(be.subsWithoutPrice) || 0;
     var taxRatePct = Number(be.taxRatePct) || 0;
 
-    var entriesWithRevenue = ewCount * ewPrice;
-    var subsWithRevenue = swCount * swPrice;
-    var flatRevenue = entriesWithRevenue + eoCount*eoPrice + subsWithRevenue + soCount*soPrice;   // none of this scales with membership count
+    // revenue of ONE member per month: the card (annual fee / 12), plus its share of entries and monthly passes
+    var entriesPerMember = (ewPct/100) * ewVisits * ewPrice;
+    var subsPerMember = (swPct/100) * swPrice;
+    var perMemberRevenue = mPrice + entriesPerMember + subsPerMember;
+
     var revenueMembership = mCount * mPrice;
-    var totalRevenue = revenueMembership + flatRevenue;
+    var entriesWithRevenue = mCount * entriesPerMember;
+    var subsWithRevenue = mCount * subsPerMember;
+    var guestRevenue = eoCount*eoPrice + soCount*soPrice;    // doesn't depend on the number of members
+    var flatRevenue = guestRevenue;
+    var totalRevenue = revenueMembership + entriesWithRevenue + subsWithRevenue + guestRevenue;
     var membershipCostTotal = mCount * mCost;
 
     var totalFixed = be.fixedCosts.reduce(function(s,c){ return s + (Number(c.amount)||0); }, 0);
 
-    // tax is a share of revenue (turnover), not of profit — so it behaves like an extra variable
-    // cost proportional to revenue, and it DOES shift the breakeven point.
+    // tax is a share of revenue (turnover): an extra cost proportional to revenue, so it shifts the breakeven point
     var taxRate = taxRatePct/100;
     var taxAmount = totalRevenue * taxRate;
     var profitNow = totalRevenue - taxAmount - membershipCostTotal - totalFixed;
 
-    // at breakeven: revenue*(1-taxRate) - volume*mCost - totalFixed = 0, revenue = volume*mPrice + flatRevenue
-    var effectiveMargin = mPrice*(1-taxRate) - mCost;
-    var bepMembers = effectiveMargin > 0 ? (totalFixed - flatRevenue*(1-taxRate)) / effectiveMargin : null;
-    var bepRevenue = bepMembers !== null ? bepMembers*mPrice + flatRevenue : null;
+    // breakeven: profit(N) = (1-t)*(N*r + guests) - N*c - fixed = 0  ->  N* = (fixed - (1-t)*guests) / ((1-t)*r - c)
+    // the answer is given in MONEY: revenue at N*  = N* * r + guests
+    var effectiveMargin = perMemberRevenue*(1-taxRate) - mCost;
+    var bepMembers = effectiveMargin > 0 ? (totalFixed - guestRevenue*(1-taxRate)) / effectiveMargin : null;
+    var bepRevenue = bepMembers !== null ? Math.max(0, bepMembers)*perMemberRevenue + guestRevenue : null;
     var margin = effectiveMargin;
 
     var scenarios = BE_SCENARIOS.map(function(pair){
       if(bepMembers === null) return { label: pair[0], volume: null, revenue: null, varCost: null, fixedCost: totalFixed, tax: null, totalCost: null, profit: null };
       var volume = Math.max(0, bepMembers) * pair[1];
-      var revenue = volume*mPrice + flatRevenue;
+      var revenue = volume*perMemberRevenue + guestRevenue;
       var varCost = volume*mCost;
       var tax = revenue * taxRate;
       var totalCost = varCost + totalFixed + tax;
@@ -842,7 +847,8 @@
 
     return {
       mCount: mCount, mPriceYear: mPriceYear, mCostYear: mCostYear, mPrice: mPrice, mCost: mCost, margin: margin,
-      entriesWithRevenue: entriesWithRevenue, subsWithRevenue: subsWithRevenue,
+      perMemberRevenue: perMemberRevenue, ewPct: ewPct, swPct: swPct,
+      entriesWithRevenue: entriesWithRevenue, subsWithRevenue: subsWithRevenue, guestRevenue: guestRevenue,
       revenueMembership: revenueMembership, flatRevenue: flatRevenue, totalRevenue: totalRevenue,
       membershipCostTotal: membershipCostTotal, totalFixed: totalFixed,
       taxAmount: taxAmount, profitNow: profitNow,
@@ -856,22 +862,26 @@
     document.getElementById('be-mcount').value = be.membershipCount;
     document.getElementById('be-mprice').value = be.membershipPrice;
     document.getElementById('be-mcost').value = be.membershipCost;
-    document.getElementById('be-ewcount').value = be.entriesWithCount;
+    document.getElementById('be-ewpct').value = be.entriesWithPct;
+    document.getElementById('be-ewvisits').value = be.entriesWithVisits;
     document.getElementById('be-ewprice').value = be.entriesWithPrice;
     document.getElementById('be-eocount').value = be.entriesWithoutCount;
     document.getElementById('be-eoprice').value = be.entriesWithoutPrice;
-    document.getElementById('be-swcount').value = be.subsWithCount;
+    document.getElementById('be-swpct').value = be.subsWithPct;
     document.getElementById('be-swprice').value = be.subsWithPrice;
     document.getElementById('be-socount').value = be.subsWithoutCount;
     document.getElementById('be-soprice').value = be.subsWithoutPrice;
     document.getElementById('be-taxrate').value = be.taxRatePct;
 
     var calc = computeBreakeven();
+    var eoRev = (Number(be.entriesWithoutCount)||0)*(Number(be.entriesWithoutPrice)||0);
+    var soRev = (Number(be.subsWithoutCount)||0)*(Number(be.subsWithoutPrice)||0);
+    var warn = (calc.ewPct > 100 || calc.swPct > 100) ? ' · ⚠ доля участников не может быть больше 100%' : '';
     document.getElementById('be-revenue-line').textContent =
       'Выручка сейчас: членские взносы ' + fmt(calc.revenueMembership) +
-      ' ₽ + входы ' + fmt(calc.entriesWithRevenue + (Number(be.entriesWithoutCount)||0)*(Number(be.entriesWithoutPrice)||0)) +
-      ' ₽ + абонементы ' + fmt(calc.subsWithRevenue + (Number(be.subsWithoutCount)||0)*(Number(be.subsWithoutPrice)||0)) +
-      ' ₽ = ' + fmt(calc.totalRevenue) + ' ₽/мес · минус налог ' + fmt(be.taxRatePct) + '% (' + fmt(calc.taxAmount) + ' ₽) = ' + fmt(calc.totalRevenue - calc.taxAmount) + ' ₽/мес после налога';
+      ' ₽ + входы участников ' + fmt(calc.entriesWithRevenue) + ' ₽ + абонементы участников ' + fmt(calc.subsWithRevenue) +
+      ' ₽ + гости (входы ' + fmt(eoRev) + ' ₽, абонементы ' + fmt(soRev) + ' ₽) = ' + fmt(calc.totalRevenue) +
+      ' ₽/мес · минус налог ' + fmt(be.taxRatePct) + '% (' + fmt(calc.taxAmount) + ' ₽) = ' + fmt(calc.totalRevenue - calc.taxAmount) + ' ₽/мес после налога' + warn;
   }
 
   function renderBreakevenCosts(){
@@ -902,28 +912,47 @@
     var calc = computeBreakeven();
     var foot = document.getElementById('be-costs-foot');
     foot.innerHTML = '';
-    var tr = document.createElement('tr');
-    ['Итого постоянные расходы', fmt(calc.totalFixed), ''].forEach(function(txt,i){
-      var td = document.createElement('td'); td.setAttribute('data-label', i===0?'':(i===1?'Сумма, ₽/мес':'')); td.textContent = txt; tr.appendChild(td);
-    });
-    foot.appendChild(tr);
+    function footRow(label, value, muted){
+      var tr = document.createElement('tr');
+      [label, fmt(value), ''].forEach(function(txt,i){
+        var td = document.createElement('td');
+        if(muted) td.className = 'muted-cell';
+        td.setAttribute('data-label', i===0?'':(i===1?'Сумма, ₽/мес':''));
+        td.textContent = txt; tr.appendChild(td);
+      });
+      foot.appendChild(tr);
+    }
+    // membership costs are shown as their own visible line, so nobody has to know they sit inside the formula
+    var membershipLabel = 'Расходы на membership: ' + fmt(calc.mCount) + ' карт × ' + fmt(calc.mCostYear) + ' ₽/год ÷ 12';
+    footRow('Итого постоянные расходы', calc.totalFixed, false);
+    footRow(membershipLabel, calc.membershipCostTotal, true);
+    footRow('Итого расходы без налога', calc.totalFixed + calc.membershipCostTotal, false);
   }
 
   function renderBreakevenResults(){
     var calc = computeBreakeven();
-    document.getElementById('be-hero-units').textContent = calc.bepMembers !== null ? fmt(Math.max(0,calc.bepMembers)) : '—';
-    document.getElementById('be-hero-revenue').textContent = calc.bepRevenue !== null ? fmt(calc.bepRevenue) : '—';
+    // headline = breakeven in MONEY (revenue per month at profit = 0); members are only a side note
+    var unitsEl = document.getElementById('be-hero-units');
+    var unitsLabel = document.getElementById('be-hero-units-label');
+    var membersEl = document.getElementById('be-hero-revenue');
     var profitEl = document.getElementById('be-hero-profit');
     profitEl.textContent = fmt(calc.profitNow);
     profitEl.style.color = calc.profitNow >= 0 ? 'var(--teal)' : 'var(--rose)';
     document.getElementById('be-hero-tax').textContent = fmt(calc.taxAmount);
     document.getElementById('be-hero-net-revenue').textContent = fmt(calc.totalRevenue - calc.taxAmount);
 
-    if(calc.margin <= 0){
-      document.getElementById('be-hero-units').textContent = '—';
-      document.getElementById('be-hero-revenue').textContent = '—';
-    } else if(calc.bepMembers < 0){
-      document.getElementById('be-hero-units').textContent = '0';
+    if(calc.margin <= 0 || calc.bepMembers === null){
+      unitsEl.textContent = '—';
+      unitsLabel.textContent = 'точку не посчитать: участник приносит меньше, чем стоит (с учётом налога)';
+      membersEl.textContent = '—';
+    } else if(calc.bepMembers <= 0){
+      unitsEl.textContent = 'покрыто';
+      unitsLabel.textContent = 'расходы уже закрыты выручкой от гостей — участники дают только плюс';
+      membersEl.textContent = '0';
+    } else {
+      unitsEl.textContent = fmt(calc.bepRevenue);
+      unitsLabel.textContent = '₽/мес — выручка в точке безубыточности (до налога)';
+      membersEl.textContent = '≈ ' + fmt(Math.ceil(calc.bepMembers));
     }
 
     var body = document.getElementById('be-scenarios-body');
@@ -1057,11 +1086,12 @@
   document.getElementById('be-mcount').addEventListener('change', function(e){ state.breakeven.membershipCount = Number(e.target.value)||0; saveAndRenderBE(); });
   document.getElementById('be-mprice').addEventListener('change', function(e){ state.breakeven.membershipPrice = Number(e.target.value)||0; saveAndRenderBE(); });
   document.getElementById('be-mcost').addEventListener('change', function(e){ state.breakeven.membershipCost = Number(e.target.value)||0; saveAndRenderBE(); });
-  document.getElementById('be-ewcount').addEventListener('change', function(e){ state.breakeven.entriesWithCount = Number(e.target.value)||0; saveAndRenderBE(); });
+  document.getElementById('be-ewpct').addEventListener('change', function(e){ state.breakeven.entriesWithPct = Number(e.target.value)||0; saveAndRenderBE(); });
+  document.getElementById('be-ewvisits').addEventListener('change', function(e){ state.breakeven.entriesWithVisits = Number(e.target.value)||0; saveAndRenderBE(); });
   document.getElementById('be-ewprice').addEventListener('change', function(e){ state.breakeven.entriesWithPrice = Number(e.target.value)||0; saveAndRenderBE(); });
   document.getElementById('be-eocount').addEventListener('change', function(e){ state.breakeven.entriesWithoutCount = Number(e.target.value)||0; saveAndRenderBE(); });
   document.getElementById('be-eoprice').addEventListener('change', function(e){ state.breakeven.entriesWithoutPrice = Number(e.target.value)||0; saveAndRenderBE(); });
-  document.getElementById('be-swcount').addEventListener('change', function(e){ state.breakeven.subsWithCount = Number(e.target.value)||0; saveAndRenderBE(); });
+  document.getElementById('be-swpct').addEventListener('change', function(e){ state.breakeven.subsWithPct = Number(e.target.value)||0; saveAndRenderBE(); });
   document.getElementById('be-swprice').addEventListener('change', function(e){ state.breakeven.subsWithPrice = Number(e.target.value)||0; saveAndRenderBE(); });
   document.getElementById('be-socount').addEventListener('change', function(e){ state.breakeven.subsWithoutCount = Number(e.target.value)||0; saveAndRenderBE(); });
   document.getElementById('be-soprice').addEventListener('change', function(e){ state.breakeven.subsWithoutPrice = Number(e.target.value)||0; saveAndRenderBE(); });
@@ -1094,18 +1124,29 @@
       data.breakeven = defaultBreakeven();
       if(oldName) data.breakeven.name = oldName;
     } else {
-      var d = defaultBreakeven();
-      ['subsWithCount','subsWithPrice','subsWithoutCount','subsWithoutPrice','taxRatePct'].forEach(function(k){
-        if(data.breakeven[k] === undefined) data.breakeven[k] = d[k];
+      var be = data.breakeven;
+      ['subsWithCount','subsWithPrice','subsWithoutCount','subsWithoutPrice'].forEach(function(k){
+        if(be[k] === undefined) be[k] = 0;
       });
-      if(data.breakeven.beVersion === 2){
-        // v2 stored entriesWithCount/subsWithCount as a per-membership rate — convert back
-        // to an absolute independent count (v3), since not every member enters or buys a sub
-        var mc = Number(data.breakeven.membershipCount) || 0;
-        data.breakeven.entriesWithCount = Math.round((Number(data.breakeven.entriesWithCount)||0) * mc);
-        data.breakeven.subsWithCount = Math.round((Number(data.breakeven.subsWithCount)||0) * mc);
+      if(be.taxRatePct === undefined) be.taxRatePct = 10;
+      var mc = Number(be.membershipCount) || 0;
+      if(be.beVersion === 2){
+        // v2 stored member entries/passes as a per-membership rate — back to an absolute count (v3)
+        be.entriesWithCount = Math.round((Number(be.entriesWithCount)||0) * mc);
+        be.subsWithCount = Math.round((Number(be.subsWithCount)||0) * mc);
+        be.beVersion = 3;
       }
-      data.breakeven.beVersion = 3;
+      if(be.beVersion !== 4){
+        // v3 stored absolute counts of member entries / monthly passes — convert to "% of members"
+        // so that revenue at today's member count stays the same
+        var ew = Number(be.entriesWithCount) || 0, sw = Number(be.subsWithCount) || 0;
+        if(be.entriesWithVisits === undefined) be.entriesWithVisits = 4;
+        be.entriesWithPct = (mc > 0 && be.entriesWithVisits > 0) ? Math.round(ew / (mc * be.entriesWithVisits) * 1000) / 10 : 0;
+        be.subsWithPct = mc > 0 ? Math.round(sw / mc * 1000) / 10 : 0;
+        delete be.entriesWithCount;
+        delete be.subsWithCount;
+        be.beVersion = 4;
+      }
     }
     return data;
   }

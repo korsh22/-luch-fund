@@ -295,7 +295,7 @@
   <!-- TABS NAV -->
   <nav class="tab-nav" id="tab-nav">
     <button class="tab-btn active" data-tab="main">Фонды и прибыль</button>
-    <button class="tab-btn" data-tab="denis">Вывод Дениса</button>
+    <button class="tab-btn" data-tab="denis">Выплаты</button>
   </nav>
 
   <!-- TAB: MAIN -->
@@ -379,45 +379,34 @@
 
   </div><!-- /tab-main -->
 
-  <!-- TAB: DENIS -->
+  <!-- TAB: ВЫПЛАТЫ -->
   <div id="tab-denis" class="tab-pane" style="display:none;">
     <header class="top">
       <div class="eyebrow">Скалодром «Луч» · внутренний учёт</div>
-      <h1>Вывод Дениса</h1>
-      <p class="sub">Сколько начислено Денису за все месяцы, сколько он уже вывел — и что осталось к выводу прямо сейчас.</p>
+      <h1>Выплаты</h1>
+      <p class="sub">Сколько начислено каждому участнику, сколько уже выплачено — и что осталось к выводу.</p>
     </header>
 
-    <!-- Denis hero -->
-    <div class="hero" id="denis-hero">
-      <div>
-        <div class="num" id="denis-balance">—</div>
-        <div class="num-label">остаток к выводу</div>
-      </div>
-      <div class="breakdown" id="denis-breakdown"></div>
-    </div>
+    <!-- Heroes row -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:22px 0 30px;" id="pay-heroes"></div>
 
     <section>
-      <h2>Начисления Денису по месяцам</h2>
-      <p class="hint">Рассчитывается автоматически из таблицы начислений по схеме каждого месяца.</p>
+      <h2>Начисления по месяцам</h2>
+      <p class="hint">Рассчитывается автоматически по схеме каждого месяца.</p>
       <div class="wide-scroll-wrap">
-      <table id="denis-accrual-table">
+      <table>
         <thead>
-          <tr>
-            <th>Месяц</th>
-            <th>Схема</th>
-            <th>Прибыль</th>
-            <th>Начислено Денису</th>
-          </tr>
+          <tr><th>Месяц</th><th>Схема</th><th>Прибыль</th><th>София</th><th>Максим</th><th>Денис</th></tr>
         </thead>
-        <tbody id="denis-accrual-body"></tbody>
-        <tfoot id="denis-accrual-foot"></tfoot>
+        <tbody id="pay-accrual-body"></tbody>
+        <tfoot id="pay-accrual-foot"></tfoot>
       </table>
       </div>
     </section>
 
     <section>
       <h2>Долги компании перед Денисом</h2>
-      <p class="hint">Деньги, которые Денис потратил из своего кармана на нужды компании — она обязана их вернуть. Прибавляются к остатку.</p>
+      <p class="hint">Деньги, которые Денис потратил из своего кармана на нужды компании — прибавляются к его остатку.</p>
       <div class="wide-scroll-wrap">
       <table>
         <thead>
@@ -433,19 +422,19 @@
     </section>
 
     <section>
-      <h2>Фактические выводы</h2>
-      <p class="hint">Каждый раз, когда Денис вывел деньги — добавьте строку.</p>
+      <h2>Фактические выплаты</h2>
+      <p class="hint">Все выплаты всем участникам в хронологическом порядке.</p>
       <div class="wide-scroll-wrap">
       <table>
         <thead>
-          <tr><th>Дата / описание</th><th>Сумма вывода</th><th></th></tr>
+          <tr><th>Дата / описание</th><th>Кому</th><th>Сумма</th><th></th></tr>
         </thead>
-        <tbody id="denis-withdrawals-body"></tbody>
-        <tfoot id="denis-withdrawals-foot"></tfoot>
+        <tbody id="pay-withdrawals-body"></tbody>
+        <tfoot id="pay-withdrawals-foot"></tfoot>
       </table>
       </div>
       <div class="table-actions">
-        <button class="btn ghost" id="add-withdrawal">+ добавить вывод</button>
+        <button class="btn ghost" id="add-withdrawal">+ добавить выплату</button>
       </div>
     </section>
   </div><!-- /tab-denis -->
@@ -725,13 +714,10 @@
     renderPlanned();
     renderHeroAndCards();
     renderChart();
-    // update Denis badge on tab button (always keep it fresh)
-    var accrued = denisAccrued ? denisAccrued() : 0;
-    var withdrawn = denisWithdrawn ? denisWithdrawn() : 0;
-    var debts = denisDebts ? denisDebts() : 0;
-    var balance = accrued - withdrawn + debts;
+    // update badge on Выплаты tab
     var tabBtn = document.querySelector && document.querySelector('.tab-btn[data-tab="denis"]');
-    if(tabBtn){
+    if(tabBtn && typeof balance === 'function'){
+      var totalBal = ['denis','maxim','sonya'].reduce(function(s,p){ return s + balance(p); }, 0);
       var existing = tabBtn.querySelector('.denis-badge');
       if(!existing){
         var badge = document.createElement('span');
@@ -739,11 +725,11 @@
         tabBtn.appendChild(badge);
         existing = badge;
       }
-      existing.textContent = fmt(balance);
-      existing.style.background = balance < 0 ? 'var(--rose-soft)' : 'var(--teal-soft)';
-      existing.style.color = balance < 0 ? 'var(--rose)' : 'var(--teal)';
+      existing.textContent = fmt(totalBal);
+      existing.style.background = totalBal < 0 ? 'var(--rose-soft)' : 'var(--teal-soft)';
+      existing.style.color = totalBal < 0 ? 'var(--rose)' : 'var(--teal)';
     }
-    // If denis tab is currently visible, re-render it
+    // If Выплаты tab is currently visible, re-render it
     var denisTab = document.getElementById('tab-denis');
     if(denisTab && denisTab.style.display !== 'none' && typeof renderDenis === 'function') renderDenis();
   }
@@ -805,20 +791,24 @@
     });
   });
 
-  // ---------- DENIS TAB ----------
-  function denisAccrued(){
-    // Returns total accrued for Denis across all months
+  // ---------- ВЫПЛАТЫ TAB — helpers ----------
+  var PERSONS = ['denis','maxim','sonya'];
+  var PERSON_LABEL = { denis: 'Денис', maxim: 'Максим', sonya: 'София' };
+
+  function accrued(person){
     var total = 0;
     state.months.forEach(function(m){
       var c = computeMonth(m.profit, m.scheme);
-      if(c) total += c.denis;
+      if(c) total += c[person] || 0;
     });
     return total;
   }
 
-  function denisWithdrawn(){
+  function withdrawn(person){
     var total = 0;
-    (state.withdrawals || []).forEach(function(w){ total += Number(w.amount)||0; });
+    (state.withdrawals || []).forEach(function(w){
+      if(w.person === person) total += Number(w.amount)||0;
+    });
     return total;
   }
 
@@ -828,52 +818,65 @@
     return total;
   }
 
+  function balance(person){
+    var a = accrued(person);
+    var w = withdrawn(person);
+    var extra = person === 'denis' ? denisDebts() : 0;
+    return a - w + extra;
+  }
+
   function renderDenis(){
-    var accrued = denisAccrued();
-    var withdrawn = denisWithdrawn();
-    var debts = denisDebts();
-    var balance = accrued - withdrawn + debts;
+    // ---- Heroes ----
+    var heroesEl = document.getElementById('pay-heroes');
+    heroesEl.innerHTML = '';
+    PERSONS.forEach(function(p){
+      var a = accrued(p);
+      var w = withdrawn(p);
+      var extra = p === 'denis' ? denisDebts() : 0;
+      var bal = a - w + extra;
+      var card = document.createElement('div');
+      card.className = 'card';
+      var neg = bal < 0;
+      card.innerHTML =
+        '<div class="name">' + PERSON_LABEL[p] + '</div>' +
+        '<div class="free' + (neg ? ' neg' : '') + '">' + fmt(bal) + '</div>' +
+        '<div class="rows" style="margin-top:10px">' +
+          '<span>начислено <b>' + fmt(a) + '</b></span>' +
+          '<span>выплачено <b>' + fmt(w) + '</b></span>' +
+        '</div>' +
+        (p === 'denis' && extra > 0 ? '<div class="rows" style="margin-top:4px"><span>+ долги компании <b>' + fmt(extra) + '</b></span></div>' : '');
+      heroesEl.appendChild(card);
+    });
 
-    // Hero
-    var balEl = document.getElementById('denis-balance');
-    balEl.textContent = fmt(balance);
-    balEl.style.color = balance < 0 ? 'var(--rose)' : 'var(--teal)';
-
-    var breakdown = document.getElementById('denis-breakdown');
-    breakdown.innerHTML =
-      '<div class="bd-item"><div class="v">' + fmt(accrued) + '</div><div class="l">начислено из прибыли</div></div>' +
-      '<div class="bd-item"><div class="v">+' + fmt(debts) + '</div><div class="l">долги компании</div></div>' +
-      '<div class="bd-item"><div class="v">' + fmt(withdrawn) + '</div><div class="l">выведено</div></div>';
-
-    // Update tab badge
+    // Update tab badge — общий остаток всем троим
+    var totalBal = PERSONS.reduce(function(s,p){ return s + balance(p); }, 0);
     var tabBtn = document.querySelector('.tab-btn[data-tab="denis"]');
-    var badgeText = fmt(balance);
     var existing = tabBtn.querySelector('.denis-badge');
     if(!existing){
       var badge = document.createElement('span');
       badge.className = 'denis-badge';
-      badge.id = 'denis-tab-badge';
       tabBtn.appendChild(badge);
       existing = badge;
     }
-    existing.textContent = badgeText;
-    existing.style.background = balance < 0 ? 'var(--rose-soft)' : 'var(--teal-soft)';
-    existing.style.color = balance < 0 ? 'var(--rose)' : 'var(--teal)';
+    existing.textContent = fmt(totalBal);
+    existing.style.background = totalBal < 0 ? 'var(--rose-soft)' : 'var(--teal-soft)';
+    existing.style.color = totalBal < 0 ? 'var(--rose)' : 'var(--teal)';
 
-    // Accrual table
-    var body = document.getElementById('denis-accrual-body');
+    // ---- Accrual table ----
+    var body = document.getElementById('pay-accrual-body');
     body.innerHTML = '';
     var schemeNames = { old_nofunds: 'Июль (без фондов)', old: 'Старая', new: 'Новая' };
     state.months.forEach(function(m){
       var c = computeMonth(m.profit, m.scheme);
       var tr = document.createElement('tr');
-      var cells = [
+      [
         { label: 'Месяц', text: m.name, cls: 'name-cell' },
         { label: 'Схема', text: schemeNames[m.scheme] || m.scheme },
         { label: 'Прибыль', text: c ? fmt(c.profit) : '—' },
-        { label: 'Начислено Денису', text: c ? fmt(c.denis) : '—' }
-      ];
-      cells.forEach(function(cd){
+        { label: 'София', text: c ? fmt(c.sonya) : '—' },
+        { label: 'Максим', text: c ? fmt(c.maxim) : '—' },
+        { label: 'Денис', text: c ? fmt(c.denis) : '—' }
+      ].forEach(function(cd){
         var td = document.createElement('td');
         if(cd.cls) td.className = cd.cls;
         td.setAttribute('data-label', cd.label);
@@ -882,36 +885,34 @@
       });
       body.appendChild(tr);
     });
-    var foot = document.getElementById('denis-accrual-foot');
+    var foot = document.getElementById('pay-accrual-foot');
     foot.innerHTML = '';
     var footTr = document.createElement('tr');
-    ['Итого', '', '', fmt(accrued)].forEach(function(t, i){
-      var td = document.createElement('td'); td.textContent = t; footTr.appendChild(td);
+    var t = totals();
+    ['Итого', '', fmt(t.profit), fmt(t.sonya), fmt(t.maxim), fmt(t.denis)].forEach(function(txt){
+      var td = document.createElement('td'); td.textContent = txt; footTr.appendChild(td);
     });
     foot.appendChild(footTr);
 
-    // Debts table
+    // ---- Debts table ----
     if(!state.debts) state.debts = [];
+    var debts = denisDebts();
     var dBody = document.getElementById('denis-debts-body');
     dBody.innerHTML = '';
     state.debts.forEach(function(debt, idx){
       var tr = document.createElement('tr');
-
       var nameTd = document.createElement('td'); nameTd.className = 'name-cell'; nameTd.setAttribute('data-label','Описание');
       var nameInput = document.createElement('input'); nameInput.type = 'text'; nameInput.value = debt.name;
       nameInput.addEventListener('change', function(){ debt.name = nameInput.value; saveAndRender(); renderDenis(); });
       nameTd.appendChild(nameInput); tr.appendChild(nameTd);
-
       var amtTd = document.createElement('td'); amtTd.setAttribute('data-label','Сумма');
       var amtInput = document.createElement('input'); amtInput.type = 'number'; amtInput.value = debt.amount;
       amtInput.addEventListener('change', function(){ debt.amount = Number(amtInput.value)||0; saveAndRender(); renderDenis(); });
       amtTd.appendChild(amtInput); tr.appendChild(amtTd);
-
       var actTd = document.createElement('td'); actTd.setAttribute('data-label','');
       var rm = document.createElement('button'); rm.className='rowbtn'; rm.textContent='✕'; rm.title='Удалить';
       rm.addEventListener('click', function(){ state.debts.splice(idx,1); saveAndRender(); renderDenis(); });
       actTd.appendChild(rm); tr.appendChild(actTd);
-
       dBody.appendChild(tr);
     });
     var dFoot = document.getElementById('denis-debts-foot');
@@ -922,11 +923,13 @@
     });
     dFoot.appendChild(dFootTr);
 
-    // Withdrawals table
+    // ---- Withdrawals table (все трое) ----
     if(!state.withdrawals) state.withdrawals = [];
-    var wBody = document.getElementById('denis-withdrawals-body');
+    var wBody = document.getElementById('pay-withdrawals-body');
     wBody.innerHTML = '';
+    var totalW = 0;
     state.withdrawals.forEach(function(w, idx){
+      totalW += Number(w.amount)||0;
       var tr = document.createElement('tr');
 
       var nameTd = document.createElement('td'); nameTd.className = 'name-cell'; nameTd.setAttribute('data-label','Дата / описание');
@@ -934,7 +937,17 @@
       nameInput.addEventListener('change', function(){ w.name = nameInput.value; saveAndRender(); renderDenis(); });
       nameTd.appendChild(nameInput); tr.appendChild(nameTd);
 
-      var amtTd = document.createElement('td'); amtTd.setAttribute('data-label','Сумма вывода');
+      var personTd = document.createElement('td'); personTd.setAttribute('data-label','Кому');
+      var personSel = document.createElement('select');
+      PERSONS.forEach(function(pk){
+        var opt = document.createElement('option'); opt.value = pk; opt.textContent = PERSON_LABEL[pk];
+        if((w.person || 'denis') === pk) opt.selected = true;
+        personSel.appendChild(opt);
+      });
+      personSel.addEventListener('change', function(){ w.person = personSel.value; saveAndRender(); renderDenis(); });
+      personTd.appendChild(personSel); tr.appendChild(personTd);
+
+      var amtTd = document.createElement('td'); amtTd.setAttribute('data-label','Сумма');
       var amtInput = document.createElement('input'); amtInput.type = 'number'; amtInput.value = w.amount;
       amtInput.addEventListener('change', function(){ w.amount = Number(amtInput.value)||0; saveAndRender(); renderDenis(); });
       amtTd.appendChild(amtInput); tr.appendChild(amtTd);
@@ -946,11 +959,10 @@
 
       wBody.appendChild(tr);
     });
-
-    var wFoot = document.getElementById('denis-withdrawals-foot');
+    var wFoot = document.getElementById('pay-withdrawals-foot');
     wFoot.innerHTML = '';
     var wFootTr = document.createElement('tr');
-    ['Итого выведено', fmt(withdrawn), ''].forEach(function(t){
+    ['Итого выплачено', '', fmt(totalW), ''].forEach(function(t){
       var td = document.createElement('td'); td.textContent = t; wFootTr.appendChild(td);
     });
     wFoot.appendChild(wFootTr);
@@ -975,7 +987,7 @@
 
   document.getElementById('add-withdrawal').addEventListener('click', function(){
     if(!state.withdrawals) state.withdrawals = [];
-    state.withdrawals.push({ id: uid('w'), name: new Date().toLocaleDateString('ru-RU'), amount: 0 });
+    state.withdrawals.push({ id: uid('w'), name: new Date().toLocaleDateString('ru-RU'), amount: 0, person: 'denis' });
     saveAndRender();
     renderDenis();
   });
@@ -1001,7 +1013,7 @@
     .then(function(r){ if(!r.ok) throw new Error('no state file'); return r.json(); })
     .then(function(data){ boot(data); })
     .catch(function(){
-      boot({"months":[{"id":"m1","name":"Июль 2026","profit":210000,"scheme":"old_nofunds"},{"id":"m2","name":"Август 2026","profit":354000,"scheme":"new"},{"id":"m3","name":"Сентябрь 2026","profit":1555662,"scheme":"new"}],"planned":[{"id":"p1","name":"Детские зацепы","amount":42228,"fund":"holds"},{"id":"p2","name":"Биты, саморезы, шуруповёрт","amount":25400,"fund":"other"},{"id":"p3","name":"Возврат Коле за шуруповёрт","amount":13000,"fund":"other"}],"withdrawals":[{"id":"w0","name":"21.08.2026 — Футболки 18 шт. (Балтик, сч. №602)","amount":25200},{"id":"w1","name":"04.09.2026 — Материалы (Лайтхаус, сч. №598)","amount":105650},{"id":"w5","name":"18.09.2026 — Светильники (Меркурий+, сч. A-1584)","amount":248427.8},{"id":"w3","name":"08.10.2026 — Унитаз-биде Борвальд (сч. №155)","amount":119640},{"id":"w6","name":"09.10.2026 — Озон","amount":140295},{"id":"w4","name":"13.10.2026 — ЛВЛ брус (Невские конструкции, сч. №576)","amount":40811}],"debts":[{"id":"debt1","name":"Зарплата Иры","amount":30000},{"id":"debt2","name":"Переоформление домена","amount":24900}]});
+      boot({"months":[{"id":"m1","name":"Июль 2026","profit":210000,"scheme":"old_nofunds"},{"id":"m2","name":"Август 2026","profit":354000,"scheme":"new"},{"id":"m3","name":"Сентябрь 2026","profit":1555662,"scheme":"new"}],"planned":[{"id":"p1","name":"Детские зацепы","amount":42228,"fund":"holds"},{"id":"p2","name":"Биты, саморезы, шуруповёрт","amount":25400,"fund":"other"},{"id":"p3","name":"Возврат Коле за шуруповёрт","amount":13000,"fund":"other"}],"withdrawals":[{"id":"ps1","name":"31.07.2026 — Июль","person":"sonya","amount":10500},{"id":"pm1","name":"31.07.2026 — Июль","person":"maxim","amount":19950},{"id":"w0","name":"21.08.2026 — Футболки 18 шт. (Балтик, сч. №602)","amount":25200,"person":"denis"},{"id":"ps2","name":"31.08.2026 — Август","person":"sonya","amount":17700},{"id":"pm2","name":"31.08.2026 — Август","person":"maxim","amount":16815},{"id":"w1","name":"04.09.2026 — Материалы (Лайтхаус, сч. №598)","amount":105650,"person":"denis"},{"id":"w5","name":"18.09.2026 — Светильники (Меркурий+, сч. A-1584)","amount":248427.8,"person":"denis"},{"id":"ps3","name":"30.09.2026 — Сентябрь","person":"sonya","amount":77783.1},{"id":"w3","name":"08.10.2026 — Унитаз-биде Борвальд (сч. №155)","amount":119640,"person":"denis"},{"id":"w6","name":"09.10.2026 — Озон","amount":140295,"person":"denis"},{"id":"w4","name":"13.10.2026 — ЛВЛ брус (Невские конструкции, сч. №576)","amount":40811,"person":"denis"}],"debts":[{"id":"debt1","name":"Зарплата Иры","amount":30000},{"id":"debt2","name":"Переоформление домена","amount":24900}]});
     });
 
 })();

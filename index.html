@@ -1,3 +1,4 @@
+<!-- build: 2026-10-07T10:36:13Z -->
 <!doctype html>
 <html lang="ru">
 <head>
@@ -200,6 +201,35 @@
   .status-bar.show{ opacity: 1; transform: translateY(0); }
   .status-bar.err{ color: var(--rose); border-color: var(--rose); }
 
+  /* ---- TABS ---- */
+  .tab-nav{
+    display: flex; gap: 4px;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 28px;
+  }
+  .tab-btn{
+    font: inherit; font-size: 14px; font-weight: 600;
+    background: transparent; border: none; cursor: pointer;
+    color: var(--text-muted);
+    padding: 10px 18px 12px;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    border-radius: 4px 4px 0 0;
+    transition: color .15s, border-color .15s;
+  }
+  .tab-btn:hover{ color: var(--text); }
+  .tab-btn.active{ color: var(--teal); border-bottom-color: var(--teal); }
+
+  .denis-badge{
+    display: inline-block;
+    background: var(--teal-soft);
+    color: var(--teal);
+    font-size: 11.5px; font-weight: 700;
+    padding: 2px 8px; border-radius: 20px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
   @media (max-width: 640px){
     .hero{ flex-direction: column; align-items: flex-start; }
     .hero .breakdown{ gap: 16px; }
@@ -261,6 +291,15 @@
 <body>
 <div class="wrap">
 
+
+  <!-- TABS NAV -->
+  <nav class="tab-nav" id="tab-nav">
+    <button class="tab-btn active" data-tab="main">Фонды и прибыль</button>
+    <button class="tab-btn" data-tab="denis">Вывод Дениса</button>
+  </nav>
+
+  <!-- TAB: MAIN -->
+  <div id="tab-main" class="tab-pane active">
 
   <header class="top">
     <div class="eyebrow">Скалодром «Луч» · внутренний учёт</div>
@@ -338,8 +377,80 @@
     </div>
   </section>
 
-  </div>
+  </div><!-- /tab-main -->
 
+  <!-- TAB: DENIS -->
+  <div id="tab-denis" class="tab-pane" style="display:none;">
+    <header class="top">
+      <div class="eyebrow">Скалодром «Луч» · внутренний учёт</div>
+      <h1>Вывод Дениса</h1>
+      <p class="sub">Сколько начислено Денису за все месяцы, сколько он уже вывел — и что осталось к выводу прямо сейчас.</p>
+    </header>
+
+    <!-- Denis hero -->
+    <div class="hero" id="denis-hero">
+      <div>
+        <div class="num" id="denis-balance">—</div>
+        <div class="num-label">остаток к выводу</div>
+      </div>
+      <div class="breakdown" id="denis-breakdown"></div>
+    </div>
+
+    <section>
+      <h2>Начисления Денису по месяцам</h2>
+      <p class="hint">Рассчитывается автоматически из таблицы начислений по схеме каждого месяца.</p>
+      <div class="wide-scroll-wrap">
+      <table id="denis-accrual-table">
+        <thead>
+          <tr>
+            <th>Месяц</th>
+            <th>Схема</th>
+            <th>Прибыль</th>
+            <th>Начислено Денису</th>
+          </tr>
+        </thead>
+        <tbody id="denis-accrual-body"></tbody>
+        <tfoot id="denis-accrual-foot"></tfoot>
+      </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>Долги компании перед Денисом</h2>
+      <p class="hint">Деньги, которые Денис потратил из своего кармана на нужды компании — она обязана их вернуть. Прибавляются к остатку.</p>
+      <div class="wide-scroll-wrap">
+      <table>
+        <thead>
+          <tr><th>Описание</th><th>Сумма</th><th></th></tr>
+        </thead>
+        <tbody id="denis-debts-body"></tbody>
+        <tfoot id="denis-debts-foot"></tfoot>
+      </table>
+      </div>
+      <div class="table-actions">
+        <button class="btn ghost" id="add-debt">+ добавить долг</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Фактические выводы</h2>
+      <p class="hint">Каждый раз, когда Денис вывел деньги — добавьте строку.</p>
+      <div class="wide-scroll-wrap">
+      <table>
+        <thead>
+          <tr><th>Дата / описание</th><th>Сумма вывода</th><th></th></tr>
+        </thead>
+        <tbody id="denis-withdrawals-body"></tbody>
+        <tfoot id="denis-withdrawals-foot"></tfoot>
+      </table>
+      </div>
+      <div class="table-actions">
+        <button class="btn ghost" id="add-withdrawal">+ добавить вывод</button>
+      </div>
+    </section>
+  </div><!-- /tab-denis -->
+
+</div><!-- /wrap -->
 <div class="status-bar" id="status-bar">Сохранено</div>
 
 <script>
@@ -614,6 +725,27 @@
     renderPlanned();
     renderHeroAndCards();
     renderChart();
+    // update Denis badge on tab button (always keep it fresh)
+    var accrued = denisAccrued ? denisAccrued() : 0;
+    var withdrawn = denisWithdrawn ? denisWithdrawn() : 0;
+    var debts = denisDebts ? denisDebts() : 0;
+    var balance = accrued - withdrawn + debts;
+    var tabBtn = document.querySelector && document.querySelector('.tab-btn[data-tab="denis"]');
+    if(tabBtn){
+      var existing = tabBtn.querySelector('.denis-badge');
+      if(!existing){
+        var badge = document.createElement('span');
+        badge.className = 'denis-badge';
+        tabBtn.appendChild(badge);
+        existing = badge;
+      }
+      existing.textContent = fmt(balance);
+      existing.style.background = balance < 0 ? 'var(--rose-soft)' : 'var(--teal-soft)';
+      existing.style.color = balance < 0 ? 'var(--rose)' : 'var(--teal)';
+    }
+    // If denis tab is currently visible, re-render it
+    var denisTab = document.getElementById('tab-denis');
+    if(denisTab && denisTab.style.display !== 'none' && typeof renderDenis === 'function') renderDenis();
   }
 
   // ---------- persistence ----------
@@ -661,6 +793,169 @@
     persist();
   }
 
+  // ---------- TAB SWITCHING ----------
+  document.querySelectorAll('.tab-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var tab = btn.getAttribute('data-tab');
+      document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      document.querySelectorAll('.tab-pane').forEach(function(p){ p.style.display = 'none'; });
+      document.getElementById('tab-' + tab).style.display = '';
+      if(tab === 'denis') renderDenis();
+    });
+  });
+
+  // ---------- DENIS TAB ----------
+  function denisAccrued(){
+    // Returns total accrued for Denis across all months
+    var total = 0;
+    state.months.forEach(function(m){
+      var c = computeMonth(m.profit, m.scheme);
+      if(c) total += c.denis;
+    });
+    return total;
+  }
+
+  function denisWithdrawn(){
+    var total = 0;
+    (state.withdrawals || []).forEach(function(w){ total += Number(w.amount)||0; });
+    return total;
+  }
+
+  function denisDebts(){
+    var total = 0;
+    (state.debts || []).forEach(function(d){ total += Number(d.amount)||0; });
+    return total;
+  }
+
+  function renderDenis(){
+    var accrued = denisAccrued();
+    var withdrawn = denisWithdrawn();
+    var debts = denisDebts();
+    var balance = accrued - withdrawn + debts;
+
+    // Hero
+    var balEl = document.getElementById('denis-balance');
+    balEl.textContent = fmt(balance);
+    balEl.style.color = balance < 0 ? 'var(--rose)' : 'var(--teal)';
+
+    var breakdown = document.getElementById('denis-breakdown');
+    breakdown.innerHTML =
+      '<div class="bd-item"><div class="v">' + fmt(accrued) + '</div><div class="l">начислено из прибыли</div></div>' +
+      '<div class="bd-item"><div class="v">+' + fmt(debts) + '</div><div class="l">долги компании</div></div>' +
+      '<div class="bd-item"><div class="v">' + fmt(withdrawn) + '</div><div class="l">выведено</div></div>';
+
+    // Update tab badge
+    var tabBtn = document.querySelector('.tab-btn[data-tab="denis"]');
+    var badgeText = fmt(balance);
+    var existing = tabBtn.querySelector('.denis-badge');
+    if(!existing){
+      var badge = document.createElement('span');
+      badge.className = 'denis-badge';
+      badge.id = 'denis-tab-badge';
+      tabBtn.appendChild(badge);
+      existing = badge;
+    }
+    existing.textContent = badgeText;
+    existing.style.background = balance < 0 ? 'var(--rose-soft)' : 'var(--teal-soft)';
+    existing.style.color = balance < 0 ? 'var(--rose)' : 'var(--teal)';
+
+    // Accrual table
+    var body = document.getElementById('denis-accrual-body');
+    body.innerHTML = '';
+    var schemeNames = { old_nofunds: 'Июль (без фондов)', old: 'Старая', new: 'Новая' };
+    state.months.forEach(function(m){
+      var c = computeMonth(m.profit, m.scheme);
+      var tr = document.createElement('tr');
+      var cells = [
+        { label: 'Месяц', text: m.name, cls: 'name-cell' },
+        { label: 'Схема', text: schemeNames[m.scheme] || m.scheme },
+        { label: 'Прибыль', text: c ? fmt(c.profit) : '—' },
+        { label: 'Начислено Денису', text: c ? fmt(c.denis) : '—' }
+      ];
+      cells.forEach(function(cd){
+        var td = document.createElement('td');
+        if(cd.cls) td.className = cd.cls;
+        td.setAttribute('data-label', cd.label);
+        td.textContent = cd.text;
+        tr.appendChild(td);
+      });
+      body.appendChild(tr);
+    });
+    var foot = document.getElementById('denis-accrual-foot');
+    foot.innerHTML = '';
+    var footTr = document.createElement('tr');
+    ['Итого', '', '', fmt(accrued)].forEach(function(t, i){
+      var td = document.createElement('td'); td.textContent = t; footTr.appendChild(td);
+    });
+    foot.appendChild(footTr);
+
+    // Debts table
+    if(!state.debts) state.debts = [];
+    var dBody = document.getElementById('denis-debts-body');
+    dBody.innerHTML = '';
+    state.debts.forEach(function(debt, idx){
+      var tr = document.createElement('tr');
+
+      var nameTd = document.createElement('td'); nameTd.className = 'name-cell'; nameTd.setAttribute('data-label','Описание');
+      var nameInput = document.createElement('input'); nameInput.type = 'text'; nameInput.value = debt.name;
+      nameInput.addEventListener('change', function(){ debt.name = nameInput.value; saveAndRender(); renderDenis(); });
+      nameTd.appendChild(nameInput); tr.appendChild(nameTd);
+
+      var amtTd = document.createElement('td'); amtTd.setAttribute('data-label','Сумма');
+      var amtInput = document.createElement('input'); amtInput.type = 'number'; amtInput.value = debt.amount;
+      amtInput.addEventListener('change', function(){ debt.amount = Number(amtInput.value)||0; saveAndRender(); renderDenis(); });
+      amtTd.appendChild(amtInput); tr.appendChild(amtTd);
+
+      var actTd = document.createElement('td'); actTd.setAttribute('data-label','');
+      var rm = document.createElement('button'); rm.className='rowbtn'; rm.textContent='✕'; rm.title='Удалить';
+      rm.addEventListener('click', function(){ state.debts.splice(idx,1); saveAndRender(); renderDenis(); });
+      actTd.appendChild(rm); tr.appendChild(actTd);
+
+      dBody.appendChild(tr);
+    });
+    var dFoot = document.getElementById('denis-debts-foot');
+    dFoot.innerHTML = '';
+    var dFootTr = document.createElement('tr');
+    ['Итого долгов', fmt(debts), ''].forEach(function(t){
+      var td = document.createElement('td'); td.textContent = t; dFootTr.appendChild(td);
+    });
+    dFoot.appendChild(dFootTr);
+
+    // Withdrawals table
+    if(!state.withdrawals) state.withdrawals = [];
+    var wBody = document.getElementById('denis-withdrawals-body');
+    wBody.innerHTML = '';
+    state.withdrawals.forEach(function(w, idx){
+      var tr = document.createElement('tr');
+
+      var nameTd = document.createElement('td'); nameTd.className = 'name-cell'; nameTd.setAttribute('data-label','Дата / описание');
+      var nameInput = document.createElement('input'); nameInput.type = 'text'; nameInput.value = w.name;
+      nameInput.addEventListener('change', function(){ w.name = nameInput.value; saveAndRender(); renderDenis(); });
+      nameTd.appendChild(nameInput); tr.appendChild(nameTd);
+
+      var amtTd = document.createElement('td'); amtTd.setAttribute('data-label','Сумма вывода');
+      var amtInput = document.createElement('input'); amtInput.type = 'number'; amtInput.value = w.amount;
+      amtInput.addEventListener('change', function(){ w.amount = Number(amtInput.value)||0; saveAndRender(); renderDenis(); });
+      amtTd.appendChild(amtInput); tr.appendChild(amtTd);
+
+      var actTd = document.createElement('td'); actTd.setAttribute('data-label','');
+      var rm = document.createElement('button'); rm.className='rowbtn'; rm.textContent='✕'; rm.title='Удалить';
+      rm.addEventListener('click', function(){ state.withdrawals.splice(idx,1); saveAndRender(); renderDenis(); });
+      actTd.appendChild(rm); tr.appendChild(actTd);
+
+      wBody.appendChild(tr);
+    });
+
+    var wFoot = document.getElementById('denis-withdrawals-foot');
+    wFoot.innerHTML = '';
+    var wFootTr = document.createElement('tr');
+    ['Итого выведено', fmt(withdrawn), ''].forEach(function(t){
+      var td = document.createElement('td'); td.textContent = t; wFootTr.appendChild(td);
+    });
+    wFoot.appendChild(wFootTr);
+  }
+
   // ---------- add buttons ----------
   document.getElementById('add-month').addEventListener('click', function(){
     state.months.push({ id: uid('m'), name: 'Новый месяц', profit: null });
@@ -669,6 +964,20 @@
   document.getElementById('add-planned').addEventListener('click', function(){
     state.planned.push({ id: uid('p'), name: 'Новая статья', amount: 0, fund: 'holds' });
     saveAndRender();
+  });
+
+  document.getElementById('add-debt').addEventListener('click', function(){
+    if(!state.debts) state.debts = [];
+    state.debts.push({ id: uid('debt'), name: 'Новый долг', amount: 0 });
+    saveAndRender();
+    renderDenis();
+  });
+
+  document.getElementById('add-withdrawal').addEventListener('click', function(){
+    if(!state.withdrawals) state.withdrawals = [];
+    state.withdrawals.push({ id: uid('w'), name: new Date().toLocaleDateString('ru-RU'), amount: 0 });
+    saveAndRender();
+    renderDenis();
   });
 
   // ---------- boot ----------
@@ -692,18 +1001,7 @@
     .then(function(r){ if(!r.ok) throw new Error('no state file'); return r.json(); })
     .then(function(data){ boot(data); })
     .catch(function(){
-      boot({
-        months: [
-          { id: 'm1', name: 'Июль 2026', profit: 210000, scheme: 'old_nofunds' },
-          { id: 'm2', name: 'Август 2026', profit: 354000, scheme: 'new' },
-          { id: 'm3', name: 'Сентябрь 2026', profit: 1555662, scheme: 'new' }
-        ],
-        planned: [
-          { id: 'p1', name: 'Детские зацепы', amount: 42228, fund: 'holds' },
-          { id: 'p2', name: 'Биты, саморезы, шуруповёрт', amount: 25400, fund: 'other' },
-          { id: 'p3', name: 'Возврат Коле за шуруповёрт', amount: 13000, fund: 'other' }
-        ]
-      });
+      boot({"months":[{"id":"m1","name":"Июль 2026","profit":210000,"scheme":"old_nofunds"},{"id":"m2","name":"Август 2026","profit":354000,"scheme":"new"},{"id":"m3","name":"Сентябрь 2026","profit":1555662,"scheme":"new"}],"planned":[{"id":"p1","name":"Детские зацепы","amount":42228,"fund":"holds"},{"id":"p2","name":"Биты, саморезы, шуруповёрт","amount":25400,"fund":"other"},{"id":"p3","name":"Возврат Коле за шуруповёрт","amount":13000,"fund":"other"}],"withdrawals":[{"id":"w0","name":"21.08.2026 — Футболки 18 шт. (Балтик, сч. №602)","amount":25200},{"id":"w1","name":"04.09.2026 — Материалы (Лайтхаус, сч. №598)","amount":105650},{"id":"w5","name":"18.09.2026 — Светильники (Меркурий+, сч. A-1584)","amount":248427.8},{"id":"w3","name":"08.10.2026 — Унитаз-биде Борвальд (сч. №155)","amount":119640},{"id":"w6","name":"09.10.2026 — Озон","amount":140295},{"id":"w4","name":"13.10.2026 — ЛВЛ брус (Невские конструкции, сч. №576)","amount":40811}],"debts":[{"id":"debt1","name":"Зарплата Иры","amount":30000},{"id":"debt2","name":"Переоформление домена","amount":24900}]});
     });
 
 })();
